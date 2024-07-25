@@ -1,0 +1,98 @@
+mport time
+import sqlite3
+import tkinter as tk
+from tkinter import messagebox
+from tkinter import ttk
+# Connect to SQLite database
+conn = sqlite3.connect('countdown_data.db')
+c = conn.cursor()
+# Create table if not exists
+c.execute('''CREATE TABLE IF NOT EXISTS countdowns (id INTEGER PRIMARY KEY
+AUTOINCREMENT, duration INTEGER, timestamp INTEGER)''')
+conn.commit()
+# Global variables to control the countdown
+running = False
+paused = False
+remaining_time_on_pause = 0
+def create_countdown(duration):
+# Get current timestamp
+current_timestamp = int(time.time())
+# Calculate end timestamp
+end_timestamp = current_timestamp + duration
+# Insert countdown data into database
+c.execute('''INSERT INTO countdowns (duration, timestamp) VALUES (?, ?)''',
+(duration, end_timestamp))
+conn.commit()
+25
+def countdown(duration):
+global running, paused, remaining_time_on_pause
+# Get current timestamp
+current_timestamp = int(time.time())
+# Calculate end timestamp
+end_timestamp = current_timestamp + duration - remaining_time_on_pause
+while end_timestamp - int(time.time()) > 0 and running:
+remaining_time = end_timestamp - int(time.time())
+if not paused:
+minutes, seconds = divmod(remaining_time, 60)
+timeformat = '{:02d}:{:02d}'.format(int(minutes), int(seconds))
+label_time.config(text=timeformat)
+progress_bar['value'] = (1 - (remaining_time / duration)) * 100
+root.update()
+remaining_time_on_pause = remaining_time
+time.sleep(1)
+if running:
+label_time.config(text='00:00')
+progress_bar['value'] = 100
+messagebox.showinfo("Countdown Complete", "Fire in the hole!")
+def start_countdown():
+global running, paused
+duration = int(entry.get())
+if duration <= 0:
+messagebox.showerror("Invalid Duration", "Please enter a valid duration greater
+than 0.")
+else:
+create_countdown(duration)
+running = True
+paused = False
+countdown(duration)
+def pause_countdown():
+26
+global paused, remaining_time_on_pause
+paused = not paused
+if paused:
+remaining_time_on_pause = int(time.time()) - remaining_time_on_pause
+def stop_countdown():
+global running, paused
+running = False
+paused = False
+# Create GUI
+root = tk.Tk()
+root.title('Countdown Timer')
+root.geometry('350x250')
+root.configure(bg='#f0f0f0')
+frame = tk.Frame(root, bg='#f0f0f0')
+frame.pack(pady=10)
+label_prompt = tk.Label(frame, text='Enter countdown duration (seconds):', font=("Arial",
+12), bg='#f0f0f0')
+label_prompt.pack()
+entry = tk.Entry(frame, font=("Arial", 12))
+entry.pack(pady=5)
+start_button = tk.Button(frame, text='Start Countdown', command=start_countdown,
+font=("Arial", 12), bg='#4CAF50', fg='white')
+start_button.pack(pady=5, padx=10, ipadx=10, side=tk.LEFT)
+pause_button = tk.Button(frame, text='Pause/Resume Countdown',
+command=pause_countdown, font=("Arial", 12), bg='#FFD700', fg='black')
+pause_button.pack(pady=5, padx=10, ipadx=10, side=tk.LEFT)
+stop_button = tk.Button(frame, text='Stop Countdown', command=stop_countdown,
+font=("Arial", 12), bg='#FF4500', fg='white')
+stop_button.pack(pady=5, padx=10, ipadx=10, side=tk.LEFT)
+27
+label_time = tk.Label(root, text='00:00', font=("Arial", 40), bg='#f0f0f0')
+label_time.pack(pady=10)
+progress_bar = ttk.Progressbar(root, orient='horizontal', mode='determinate',
+length=250)
+progress_bar.pack()
+# Start the Tkinter event loop
+root.mainloop()
+# Close database connection
+conn.close()
